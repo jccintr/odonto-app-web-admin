@@ -7,7 +7,7 @@ import { isValidCpf, isValidEmail, isValidPhone, maskCep, maskCpf, maskPhone, on
 import { centsToInput, formatMoney, parseMoney } from '../../src/lib/money.js';
 import { formatPercent, parsePercent } from '../../src/lib/percent.js';
 import { ALL_TEETH, UPPER_PERMANENT, isDeciduous, isTooth, normalizeFaces, toothLabel } from '../../src/lib/tooth.js';
-import { itemLabel, loadActiveProcedures, subtotalOf } from '../../src/lib/budget.js';
+import { itemLabel, loadActiveProcedures } from '../../src/lib/budget.js';
 
 describe('dinheiro', () => {
   it('formata centavos em reais, sem espaço especial', () => {
@@ -164,7 +164,6 @@ describe('orçamento', () => {
     expect(itemLabel({ procedure: { name: 'Restauração' }, tooth: 16, faces: 'DO' })).toBe('Restauração — dente 16 (DO)');
     expect(itemLabel({ procedure: { name: 'Limpeza' }, tooth: null, faces: null })).toBe('Limpeza');
     expect(itemLabel({ procedure: { name: 'Canal' }, tooth: 11, faces: null })).toBe('Canal — dente 11');
-    expect(subtotalOf([{ priceCents: 100 }, { priceCents: null }, { priceCents: 250 }])).toBe(350);
   });
 });
 

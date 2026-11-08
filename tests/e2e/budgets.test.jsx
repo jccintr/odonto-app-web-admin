@@ -1,24 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { api, executeItems, loginAs, renderApp, screen, unique, user, waitFor, within } from './helpers.jsx';
 
-/** Cria um orçamento pela tela, para o paciente indicado, com duas restaurações. */
+/** Cria o orçamento como o dentista faria (no aplicativo: o web não cria orçamento) e abre a página dele. */
 async function createBudget(u, patientName = 'Ana Lima') {
-  renderApp('/orcamentos');
-  await u.click(await screen.findByRole('button', { name: 'Novo orçamento' }));
-  const dialog = await screen.findByRole('dialog');
-  await u.type(within(dialog).getByPlaceholderText(/Digite nome/), patientName.split(' ')[0].toLowerCase());
-  await u.click(await within(dialog).findByRole('option', { name: new RegExp(patientName) }));
-  await u.selectOptions(within(dialog).getByLabelText(/Dentista responsável/), within(dialog).getByRole('option', { name: 'Dr. Paulo Lima' }));
-  await waitFor(() => expect(within(dialog).getByRole('option', { name: /Restauração em resina/ })).toBeInTheDocument());
-  const first = within(dialog).getByLabelText('Procedimento 1');
-  await u.selectOptions(first, within(first).getByRole('option', { name: /Restauração em resina/ }));
-  await u.selectOptions(within(dialog).getAllByLabelText('Dente')[0], '16');
-  await u.click(within(dialog).getByRole('button', { name: 'Oclusal/Incisal' }));
-  await u.click(within(dialog).getByRole('button', { name: 'Adicionar procedimento' }));
-  const second = within(dialog).getByLabelText('Procedimento 2');
-  await u.selectOptions(second, within(second).getByRole('option', { name: /Limpeza/ }));
-  await u.click(within(dialog).getByRole('button', { name: 'Criar orçamento' }));
-  return screen.findByRole('link', { name: '← Orçamentos' }); // só existe na página do orçamento criado
+  const patient = (await api(`/api/patients?q=${encodeURIComponent(patientName)}`)).data.find((x) => x.name === patientName);
+  const dentists = await api('/api/dentists');
+  const procedures = (await api('/api/procedures?perPage=100')).data;
+  const pick = (re) => procedures.find((p) => re.test(p.name)).id;
+  const budget = await api('/api/budgets', { method: 'POST', body: {
+    patientId: patient.id, dentistId: dentists.find((d) => d.name === 'Dr. Paulo Lima').id,
+    items: [{ procedureId: pick(/Restauração em resina/), tooth: 16, faces: 'O' }, { procedureId: pick(/Limpeza/) }],
+  } });
+  renderApp(`/orcamentos/${budget.id}`);
+  return screen.findByRole('link', { name: '← Orçamentos' });
 }
 
 beforeEach(async () => { await loginAs('admin'); });
@@ -148,16 +142,6 @@ describe('orçamentos e pagamentos', () => {
     }
   });
 
-  it('valida o formulário de orçamento antes de enviar', async () => {
-    const u = user();
-    renderApp('/orcamentos');
-    await u.click(await screen.findByRole('button', { name: 'Novo orçamento' }));
-    const dialog = await screen.findByRole('dialog');
-    await u.click(within(dialog).getByRole('button', { name: 'Criar orçamento' }));
-    expect(await within(dialog).findByText('Escolha o paciente.')).toBeInTheDocument();
-    expect(within(dialog).getByText('Escolha o procedimento de cada linha (ou remova a linha vazia).')).toBeInTheDocument();
-  });
-
   it('o financeiro mostra parcelas vencidas e permite receber', async () => {
     const u = user();
     const name = unique('Devedor');
@@ -208,5 +192,26 @@ describe('procedimentos', () => {
     expect(await screen.findByText('Limpeza (profilaxia)')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Novo procedimento' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Custo' })).not.toBeInTheDocument();
+  });
+
+  it('a secretária não monta o orçamento: não cria, não inclui item nem dá desconto, mas registra a aprovação', async () => {
+    const patient = await api('/api/patients', { method: 'POST', body: { name: unique('Paciente da secretária'), contactConsent: false } });
+    const dentists = await api('/api/dentists');
+    const procedures = await api('/api/procedures?perPage=100');
+    const proc = procedures.data.find((p) => p.name === 'Restauração em resina');
+    const budget = await api('/api/budgets', { method: 'POST', body: { patientId: patient.id, dentistId: dentists[0].id, items: [{ procedureId: proc.id, tooth: 16 }] } });
+
+    await loginAs('secretary');
+    renderApp('/orcamentos');
+    expect(await screen.findByRole('heading', { name: 'Orçamentos' })).toBeInTheDocument();
+    await screen.findAllByRole('row');
+    expect(screen.queryByRole('button', { name: 'Novo orçamento' })).not.toBeInTheDocument(); // ninguém cria orçamento no web
+
+    renderApp(`/orcamentos/${budget.id}`);
+    expect(await screen.findByText('Restauração em resina')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Adicionar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Desconto' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aprovar' })).toBeInTheDocument();
   });
 });

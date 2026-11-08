@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Budgets } from '../api/index.js';
-import BudgetForm from '../components/BudgetForm.jsx';
-import { Button, Card, EmptyState, ErrorState, Loading, PageHeader, Pagination, Select, StatusBadge, Table } from '../components/ui.jsx';
+import { Card, EmptyState, ErrorState, Loading, PageHeader, Pagination, Select, StatusBadge, Table } from '../components/ui.jsx';
 import useResource from '../hooks/useResource.js';
 import { dayOf, formatDay } from '../lib/dates.js';
 import { BUDGET_STATUS } from '../lib/labels.js';
@@ -13,7 +11,6 @@ export default function BudgetsPage() {
   const navigate = useNavigate();
   const status = params.get('situacao') ?? '';
   const page = Number(params.get('pagina') ?? 1);
-  const [creating, setCreating] = useState(false);
   const go = (patch) => {
     const next = new URLSearchParams(params);
     Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
@@ -23,7 +20,7 @@ export default function BudgetsPage() {
 
   return (
     <>
-      <PageHeader title="Orçamentos" actions={<Button icon="plus" onClick={() => setCreating(true)}>Novo orçamento</Button>} />
+      <PageHeader title="Orçamentos" />
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-border p-3">
           <Select aria-label="Situação" className="w-auto" value={status} onChange={(e) => go({ situacao: e.target.value, pagina: null })}>
@@ -33,8 +30,8 @@ export default function BudgetsPage() {
         </div>
         {list.loading && !list.data ? <Loading /> : list.error ? <div className="p-4"><ErrorState error={list.error} onRetry={list.reload} /></div>
           : list.data.data.length === 0 ? (
-            <EmptyState icon="clipboard" title="Nenhum orçamento" action={<Button icon="plus" onClick={() => setCreating(true)}>Criar orçamento</Button>}>
-              {status ? 'Não há orçamentos nesta situação.' : 'Crie o primeiro orçamento para um paciente.'}
+            <EmptyState icon="clipboard" title="Nenhum orçamento">
+              {status ? 'Não há orçamentos nesta situação.' : 'Os orçamentos são montados pelo dentista, no aplicativo.'}
             </EmptyState>
           ) : (
             <>
@@ -54,7 +51,6 @@ export default function BudgetsPage() {
             </>
           )}
       </Card>
-      <BudgetForm open={creating} onClose={() => setCreating(false)} onSaved={(b) => navigate(`/orcamentos/${b.id}`)} />
     </>
   );
 }

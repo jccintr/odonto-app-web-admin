@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Budgets, Notices, Payments } from '../api/index.js';
 import { errorMessage } from '../api/client.js';
@@ -6,59 +6,15 @@ import ApprovalModal from '../components/ApprovalModal.jsx';
 import BudgetPrint from '../components/BudgetPrint.jsx';
 import MoneyInput from '../components/MoneyInput.jsx';
 import { NewPaymentModal, PlanModal, ReceiveModal } from '../components/PaymentModals.jsx';
-import ToothFacesPicker from '../components/ToothFacesPicker.jsx';
-import { Alert, Badge, Button, Card, CardHeader, ErrorState, Field, Loading, Modal, PageHeader, Select, StatusBadge, Table, Textarea, cx } from '../components/ui.jsx';
+import { Alert, Badge, Button, Card, CardHeader, ErrorState, Field, Loading, Modal, PageHeader, StatusBadge, Table, Textarea, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
 import useResource from '../hooks/useResource.js';
-import { loadActiveProcedures, subtotalOf } from '../lib/budget.js';
 import { dayOf, formatDay } from '../lib/dates.js';
 import { BUDGET_STATUS, ITEM_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from '../lib/labels.js';
 import { formatMoney } from '../lib/money.js';
 
 const paymentState = (p) => (p.status === 'pending' && p.overdue ? 'overdue' : p.status);
-
-/** Inclusão e edição de um item (procedimento, dente, faces, valor) */
-function ItemModal({ budgetId, item, onClose, onDone }) {
-  const ui = useUI();
-  const [procedures, setProcedures] = useState(null);
-  const [form, setForm] = useState({ procedureId: '', tooth: item?.tooth ?? null, faces: item?.faces ?? '', priceCents: item?.priceCents ?? null });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  useEffect(() => { if (!item) loadActiveProcedures().then(setProcedures).catch((e) => ui.error(e)); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-
-  const save = async () => {
-    setBusy(true); setError(null);
-    try {
-      const body = { tooth: form.tooth, faces: form.faces || null, priceCents: form.priceCents };
-      const saved = item
-        ? await Budgets.updateItem(budgetId, item.id, body)
-        : await Budgets.addItem(budgetId, { procedureId: form.procedureId, tooth: form.tooth ?? undefined, faces: form.faces || undefined, priceCents: form.priceCents ?? undefined });
-      onDone(saved); onClose();
-    } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
-  };
-
-  return (
-    <Modal open onClose={onClose} title={item ? `Editar: ${item.procedure.name}` : 'Adicionar procedimento'}
-      footer={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button loading={busy} disabled={(!item && !form.procedureId) || form.priceCents === null} onClick={save}>Salvar</Button></>}>
-      <div className="flex flex-col gap-4">
-        {error && <Alert tone="danger">{error}</Alert>}
-        {!item && (
-          <Field label="Procedimento" required>
-            {({ id }) => (
-              <Select id={id} value={form.procedureId} onChange={(e) => { const p = procedures.find((x) => x.id === e.target.value); setForm({ ...form, procedureId: e.target.value, priceCents: p ? p.priceCents : null }); }}>
-                <option value="">Escolha…</option>
-                {(procedures ?? []).map((p) => <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.priceCents)}</option>)}
-              </Select>
-            )}
-          </Field>
-        )}
-        <Field label="Dente e faces"><div><ToothFacesPicker idPrefix="item" tooth={form.tooth} faces={form.faces} onChange={(patch) => setForm({ ...form, ...patch })} /></div></Field>
-        <Field label="Valor">{({ id }) => <MoneyInput id={id} value={form.priceCents} onChange={(priceCents) => setForm({ ...form, priceCents })} />}</Field>
-      </div>
-    </Modal>
-  );
-}
 
 function DiscountModal({ budget, onClose, onDone }) {
   const [discount, setDiscount] = useState(budget.discountCents);
@@ -95,7 +51,6 @@ export default function BudgetPage() {
   if (budget.error) return <ErrorState error={budget.error.status === 404 ? { message: 'Orçamento não encontrado.' } : budget.error} onRetry={budget.error.status === 404 ? () => navigate('/orcamentos') : budget.reload} />;
   const b = budget.data;
   const open = b.status === 'open';
-  const editable = ['open', 'approved'].includes(b.status); // incluir/alterar o que ainda é só proposto
   const hasProposed = b.items.some((item) => item.status === 'pending' && !item.approvalId);
   const hasPayments = ['approved', 'completed'].includes(b.status);
   const reloadAll = () => { budget.reload(); finance.reload(); };
@@ -108,10 +63,6 @@ export default function BudgetPage() {
     try { apply(await Budgets.setStatus(b.id, status)); ui.success(label); } catch (err) { ui.error(err); } finally { setBusy(null); }
   };
 
-  const removeItem = async (item) => {
-    if (!(await ui.confirm({ title: 'Remover procedimento?', message: item.procedure.name, confirmLabel: 'Remover', danger: true }))) return;
-    try { apply(await Budgets.removeItem(b.id, item.id)); } catch (err) { ui.error(err); }
-  };
   const cancelItem = async (item) => {
     if (!(await ui.confirm({ title: 'O paciente desistiu deste procedimento?', message: `${item.procedure.name}. O valor sai do total do orçamento.`, confirmLabel: 'Cancelar procedimento', danger: true }))) return;
     try { apply(await Budgets.cancelItem(b.id, item.id)); } catch (err) { ui.error(err); }
@@ -164,7 +115,7 @@ export default function BudgetPage() {
 
         <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
           <Card>
-            <CardHeader title="Procedimentos" action={editable && <Button size="sm" icon="plus" onClick={() => setModal({ type: 'item' })}>Adicionar</Button>} />
+            <CardHeader title="Procedimentos"  />
             <Table head={['Procedimento', 'Dente', { label: 'Valor', right: true }, 'Situação', '']}>
               {b.items.map((item) => (
                 <tr key={item.id} className={cx(item.status === 'canceled' && 'opacity-50')}>
@@ -173,7 +124,6 @@ export default function BudgetPage() {
                   <td className="px-4 py-3 text-right tabular-nums">{formatMoney(item.priceCents)}</td>
                   <td className="px-4 py-3"><StatusBadge map={ITEM_STATUS} value={item.status === 'pending' && !item.approvalId ? 'proposed' : item.status} />{item.performedAt && <span className="ml-2 text-xs text-muted">{formatDay(dayOf(item.performedAt))}</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    {editable && !item.approvalId && item.status === 'pending' && <><Button size="sm" variant="ghost" onClick={() => setModal({ type: 'item', item })}>Editar</Button><Button size="sm" variant="ghost" className="text-danger" onClick={() => removeItem(item)}>Remover</Button></>}
                     {b.status === 'approved' && item.status === 'pending' && isAdmin && <Button size="sm" variant="ghost" className="text-danger" onClick={() => cancelItem(item)}>Desistiu</Button>}
                   </td>
                 </tr>
@@ -182,7 +132,7 @@ export default function BudgetPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Resumo" action={open && <Button size="sm" variant="secondary" onClick={() => setModal({ type: 'discount' })}>Desconto</Button>} />
+            <CardHeader title="Resumo" action={open && isAdmin && <Button size="sm" variant="secondary" onClick={() => setModal({ type: 'discount' })}>Desconto</Button>} />
             <dl className="flex flex-col gap-2 p-5 text-sm">
               <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular-nums">{formatMoney(b.subtotalCents)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Desconto</dt><dd className="tabular-nums">- {formatMoney(b.discountCents)}</dd></div>
@@ -240,8 +190,6 @@ export default function BudgetPage() {
       </div>
 
       <BudgetPrint budget={b} clinic={clinic} />
-
-      {modal?.type === 'item' && <ItemModal budgetId={b.id} item={modal.item} onClose={close} onDone={apply} />}
       {modal?.type === 'approve' && <ApprovalModal budget={b} onClose={close} onDone={(saved) => { apply(saved); ui.success('Aprovação registrada.'); }} />}
       {modal?.type === 'discount' && <DiscountModal budget={b} onClose={close} onDone={apply} />}
       {modal?.type === 'receive' && <ReceiveModal payment={modal.payment} onClose={close} onDone={reloadAll} />}
