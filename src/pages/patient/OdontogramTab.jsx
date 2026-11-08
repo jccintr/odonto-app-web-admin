@@ -75,7 +75,7 @@ export default function OdontogramTab({ patient }) {
                   {records.map((r) => (
                     <li key={r.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3 text-sm">
                       <div><p className="flex items-center gap-2 font-medium"><span className="size-3 rounded-sm" style={{ background: CONDITION[r.condition]?.color }} />{CONDITION[r.condition]?.label ?? r.condition}{r.faces && <span className="text-muted">({r.faces})</span>}</p>
-                        <p className="text-muted">{formatDay(r.recordedOn)}{r.sourceItemId ? ' · automática (procedimento realizado)' : ''}</p>{r.notes && <p className="mt-1">{r.notes}</p>}</div>
+                        <p className="text-muted">{formatDay(r.recordedOn)}{r.sourceItemId ? ' · automática (procedimento realizado)' : ''}{r.recordedByName ? ` · ${r.recordedByName}` : ''}</p>{r.notes && <p className="mt-1">{r.notes}</p>}</div>
                       {isAdmin && <Button size="sm" variant="ghost" className="text-danger" onClick={() => unmark(r)}>Remover</Button>}
                     </li>
                   ))}
@@ -100,7 +100,7 @@ export default function OdontogramTab({ patient }) {
       <Card>
         <CardHeader title="Todas as marcações" />
         {all.length === 0 ? <p className="p-5 text-muted">Nenhuma marcação ainda.</p> : (
-          <Table head={['Dente', 'Condição', 'Faces', 'Data', 'Origem']}>
+          <Table head={['Dente', 'Condição', 'Faces', 'Data', 'Origem', 'Dentista / registrado por']}>
             {all.map((r) => (
               <tr key={r.id} className="cursor-pointer hover:bg-surface-2" onClick={() => setSelected(r.tooth)}>
                 <td className="px-4 py-3 font-medium tabular-nums">{r.tooth}</td>
@@ -108,6 +108,7 @@ export default function OdontogramTab({ patient }) {
                 <td className="px-4 py-3 text-muted">{r.faces ?? '—'}</td>
                 <td className="px-4 py-3">{formatDay(r.recordedOn)}</td>
                 <td className="px-4 py-3 text-muted">{r.sourceItemId ? 'Procedimento realizado' : 'Marcação manual'}</td>
+                <td className="px-4 py-3">{r.recordedByName ?? '—'}</td>
               </tr>
             ))}
           </Table>
