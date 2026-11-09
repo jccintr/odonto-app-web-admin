@@ -97,11 +97,12 @@ button:disabled { cursor: not-allowed; }
 .print-only { display: none; }
 @media print {
   @page { size: A4; margin: 14mm; }
-  html, body { background: #fff !important; color: #000 !important; }
-  body * { visibility: hidden; }
-  .print-area, .print-area * { visibility: visible; }
-  .print-area { position: absolute; inset: 0 auto auto 0; width: 100%; }
+  html, body { background: #fff !important; color: #000 !important; height: auto !important; }
+  #root { display: none !important; } /* o app some; a folha (.print-area) está no body, fora do #root */
   .no-print { display: none !important; }
   .print-only { display: block; }
-  .print-area { --text: #000; --muted: #444; --border: #bbb; --border-strong: #888; --surface: #fff; --surface-2: #f2f2f2; --primary: #0f766e; }
+  .print-area { width: 100%; --text: #000; --muted: #444; --border: #bbb; --border-strong: #888; --surface: #fff; --surface-2: #f2f2f2; --primary: #0f766e; }
+  /* o odontograma tem 16 dentes por arco: reduz o desenho para caber nos 182 mm úteis do A4 */
+  .print-area .odontogram svg { width: 32px; height: 32px; }
+  .print-area .odontogram .overflow-x-auto { overflow: visible; }
 }

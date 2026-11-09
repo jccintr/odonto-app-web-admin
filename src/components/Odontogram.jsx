@@ -72,7 +72,7 @@ function Arch({ upper, lower, records, planned, selected, onSelect, interactive 
 /** Odontograma completo. `teeth`: { "16": [marcações] } (resposta da API). */
 export default function Odontogram({ teeth = {}, planned = {}, selected, onSelect, interactive = false, deciduous = false }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="odontogram flex flex-col gap-2">
       <Arch upper={UPPER_PERMANENT} lower={LOWER_PERMANENT} records={teeth} planned={planned} selected={selected} onSelect={onSelect} interactive={interactive} />
       {deciduous && <><p className="text-center text-xs font-semibold uppercase tracking-wide text-muted">Dentes de leite</p><Arch upper={UPPER_DECIDUOUS} lower={LOWER_DECIDUOUS} records={teeth} planned={planned} selected={selected} onSelect={onSelect} interactive={interactive} /></>}
     </div>

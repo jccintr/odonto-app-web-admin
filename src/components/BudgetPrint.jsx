@@ -1,3 +1,4 @@
+import PrintPortal from './PrintPortal.jsx';
 import { dayOf, formatDay } from '../lib/dates.js';
 import { itemLabel } from '../lib/budget.js';
 import { formatMoney } from '../lib/money.js';
@@ -5,6 +6,7 @@ import { formatMoney } from '../lib/money.js';
 /** Orçamento para imprimir (só aparece na impressão). */
 export default function BudgetPrint({ budget, clinic }) {
   return (
+    <PrintPortal>
     <div className="print-area print-only text-sm" aria-hidden="true">
       <div className="mb-4 flex items-end justify-between border-b-2 border-black pb-2">
         <div><p className="text-xl font-bold">{clinic.name}</p>{clinic.document && <p>{clinic.document}</p>}</div>
@@ -29,5 +31,6 @@ export default function BudgetPrint({ budget, clinic }) {
       {budget.notes && <p className="mt-4 whitespace-pre-wrap"><strong>Observações:</strong> {budget.notes}</p>}
       <div className="mt-16 grid grid-cols-2 gap-12 text-center"><div className="border-t border-black pt-1">Paciente</div><div className="border-t border-black pt-1">{budget.dentist.name}</div></div>
     </div>
+    </PrintPortal>
   );
 }

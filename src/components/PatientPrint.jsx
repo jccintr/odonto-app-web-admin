@@ -1,3 +1,4 @@
+import PrintPortal from './PrintPortal.jsx';
 import Odontogram, { OdontogramLegend } from './Odontogram.jsx';
 import { ageOf, dayOf, formatDay } from '../lib/dates.js';
 import { CONDITION } from '../lib/labels.js';
@@ -14,6 +15,7 @@ export default function PatientPrint({ patient: p, clinic, options, odontogram }
   const row = (label, value) => <p><strong>{label}:</strong> {value || '—'}</p>;
 
   return (
+    <PrintPortal>
     <div className="print-area print-only text-[12px] leading-snug" aria-hidden="true" data-testid="patient-print">
       <div className="mb-4 flex items-end justify-between border-b-2 border-black pb-2">
         <div><p className="text-xl font-bold">{clinic.name}</p>{clinic.document && <p>{clinic.document}</p>}</div>
@@ -59,5 +61,6 @@ export default function PatientPrint({ patient: p, clinic, options, odontogram }
       {p.notes && <section className="mb-3"><h2 className="mb-1 border-b border-gray-400 font-bold uppercase">Observações</h2><p className="whitespace-pre-wrap">{p.notes}</p></section>}
       <div className="mt-14 grid grid-cols-2 gap-12 text-center"><div className="border-t border-black pt-1">Assinatura do paciente ou responsável</div><div className="border-t border-black pt-1">Cirurgião-dentista</div></div>
     </div>
+    </PrintPortal>
   );
 }
