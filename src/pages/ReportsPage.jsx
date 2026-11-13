@@ -1,7 +1,9 @@
 import { useSearchParams } from 'react-router-dom';
 import { Reports } from '../api/index.js';
 import BarChart from '../components/BarChart.jsx';
-import { Card, CardHeader, ErrorState, IconButton, Loading, PageHeader, Stat, Table, cx } from '../components/ui.jsx';
+import ReportPrint from '../components/ReportPrint.jsx';
+import { Button, Card, CardHeader, ErrorState, IconButton, Loading, PageHeader, Stat, Table, cx } from '../components/ui.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import useResource from '../hooks/useResource.js';
 import { formatMonth, monthOf, shiftMonth } from '../lib/dates.js';
 import { PAYMENT_METHOD } from '../lib/labels.js';
@@ -12,6 +14,7 @@ const SHORT_MONTH = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', month: '
 const monthLabel = (m) => { const [y, mo] = m.split('-').map(Number); return SHORT_MONTH.format(new Date(Date.UTC(y, mo - 1, 1))).replace('.', ''); };
 
 export default function ReportsPage() {
+  const { clinic } = useAuth();
   const [params, setParams] = useSearchParams();
   const current = monthOf();
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mes') ?? '') ? params.get('mes') : current;
@@ -23,10 +26,13 @@ export default function ReportsPage() {
   return (
     <>
       <PageHeader title="Relatórios" subtitle="Resumo gerencial do mês" actions={(
-        <div className="no-print flex items-center gap-1">
+        <div className="no-print flex items-center gap-2">
+          <Button variant="secondary" icon="print" disabled={!r} onClick={() => window.print()}>Imprimir</Button>
+          <div className="flex items-center gap-1">
           <IconButton icon="chevronLeft" label="Mês anterior" onClick={() => go(shiftMonth(month, -1))} />
           <h2 className="min-w-40 text-center font-semibold" aria-live="polite">{formatMonth(month)}</h2>
           <IconButton icon="chevronRight" label="Próximo mês" disabled={month >= current} onClick={() => go(shiftMonth(month, 1))} />
+          </div>
         </div>
       )} />
       {report.loading && !r ? <Loading /> : report.error ? <ErrorState error={report.error} onRetry={report.reload} /> : (
@@ -112,6 +118,7 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      {r && <ReportPrint report={r} month={month} clinic={clinic} />}
     </>
   );
 }

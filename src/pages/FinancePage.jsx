@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Payments } from '../api/index.js';
 import { ReceiveModal } from '../components/PaymentModals.jsx';
+import ReceivablesPrint from '../components/ReceivablesPrint.jsx';
 import { Button, Card, EmptyState, ErrorState, Input, Loading, PageHeader, Pagination, Stat, StatusBadge, Table, Tabs, cx } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
@@ -20,7 +21,7 @@ const VIEWS = [
 const stateOf = (p) => (p.status === 'pending' && p.overdue ? 'overdue' : p.status);
 
 export default function FinancePage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, clinic } = useAuth();
   const ui = useUI();
   const [params, setParams] = useSearchParams();
   const view = VIEWS.find((v) => v.id === params.get('ver')) ?? VIEWS[0];
@@ -28,6 +29,17 @@ export default function FinancePage() {
   const from = params.get('de') ?? '';
   const to = params.get('ate') ?? '';
   const [receiving, setReceiving] = useState(null);
+  const [printing, setPrinting] = useState(false);
+  const [sheet, setSheet] = useState(null); // lista completa (todas as páginas) a imprimir
+
+  // a folha só entra na página depois de pronta; aí abre a impressão e limpa quando fechar
+  useEffect(() => {
+    if (!sheet) return undefined;
+    const done = () => setSheet(null);
+    window.addEventListener('afterprint', done, { once: true });
+    const timer = setTimeout(() => window.print(), 50);
+    return () => { clearTimeout(timer); window.removeEventListener('afterprint', done); };
+  }, [sheet]);
 
   const go = (patch) => {
     const next = new URLSearchParams(params);
@@ -40,6 +52,16 @@ export default function FinancePage() {
   const pageSum = (list.data?.data ?? []).filter((p) => p.status !== 'canceled').reduce((t, p) => t + p.amountCents, 0);
 
   const reload = () => { list.reload(); overdue.reload(); };
+  // imprime a lista inteira com os filtros atuais (a tela pagina de 20 em 20; a API devolve até 100 por vez)
+  const print = async () => {
+    setPrinting(true);
+    try {
+      const query = { ...view.query, dueFrom: from || undefined, dueTo: to || undefined, perPage: 100 };
+      const first = await Payments.list({ ...query, page: 1 });
+      const rest = await Promise.all(Array.from({ length: Math.max(first.totalPages - 1, 0) }, (_, i) => Payments.list({ ...query, page: i + 2 })));
+      setSheet({ rows: [first, ...rest].flatMap((r) => r.data), viewLabel: view.label, from, to });
+    } catch (err) { ui.error(err); } finally { setPrinting(false); }
+  };
   const cancel = async (p) => {
     const answer = await ui.confirm({
       title: p.status === 'paid' ? 'Estornar pagamento?' : 'Cancelar parcela?', message: `${p.patient.name} — ${formatMoney(p.amountCents)}`,
@@ -51,7 +73,7 @@ export default function FinancePage() {
 
   return (
     <>
-      <PageHeader title="Financeiro" subtitle="Contas a receber dos pacientes" />
+      <PageHeader title="Financeiro" subtitle="Contas a receber dos pacientes" actions={<Button variant="secondary" icon="print" className="no-print" loading={printing} onClick={print}>Imprimir</Button>} />
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <Stat label="Total vencido" value={overdue.data ? formatMoney(overdueSum) : '…'} tone={overdueSum > 0 ? 'danger' : undefined} hint={overdue.data ? `${overdue.data.total} parcelas` : undefined} />
         <Stat label={`Nesta lista (${view.label.toLowerCase()})`} value={list.data ? formatMoney(pageSum) : '…'} hint="soma da página atual" />
@@ -87,6 +109,7 @@ export default function FinancePage() {
             </>
           )}
       </Card>
+      {sheet && <ReceivablesPrint rows={sheet.rows} viewLabel={sheet.viewLabel} from={sheet.from} to={sheet.to} clinic={clinic} />}
       <ReceiveModal payment={receiving} onClose={() => setReceiving(null)} onDone={reload} />
     </>
   );
