@@ -5,7 +5,7 @@ import { Card, cx } from './ui.jsx';
 // Foto da tela de entrada (public/login-hero.jpg). Pode ser trocada via VITE_LOGIN_HERO_URL.
 const HERO_PHOTO = import.meta.env.VITE_LOGIN_HERO_URL || '/login-hero.jpg';
 const HERO_ALT = 'Dentista de touca azul atendendo uma paciente no consultório';
-
+const SLOGAN = "Tecnologia inteligente para clínicas que transformam sorrisos.";
 const POINTS = ['Agenda, prontuário e odontograma num só lugar', 'Orçamentos, recebimentos e repasse aos dentistas', '14 dias grátis, sem cartão de crédito'];
 
 function Hero() {
@@ -16,7 +16,7 @@ function Hero() {
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
         <Brand />
         <div className="max-w-lg">
-          <h2 className="text-3xl font-bold leading-tight tracking-tight">Sorrisos bem cuidados começam numa clínica bem organizada.</h2>
+          <h2 className="text-3xl font-bold leading-tight tracking-tight">{SLOGAN}</h2>
           <ul className="mt-5 space-y-2 text-white/90">{POINTS.map((p) => <li key={p} className="flex gap-2"><span aria-hidden className="text-sky-300">✓</span>{p}</li>)}</ul>
         </div>
       </div>
